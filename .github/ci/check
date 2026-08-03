@@ -1,0 +1,32 @@
+#!/bin/sh
+
+set -eu
+
+WORK_DIR=$(mktemp -d)
+SOURCE_DIR="$WORK_DIR/source"
+BUILD_DIR="$WORK_DIR/build"
+
+cleanup()
+{
+    rm -rf "$WORK_DIR"
+}
+trap cleanup EXIT HUP INT TERM
+
+echo "ci: preparing a private writable source tree"
+cp -a /source "$SOURCE_DIR"
+mkdir "$BUILD_DIR"
+
+echo "ci: configuring Pixman 0.32.8"
+cd "$BUILD_DIR"
+"$SOURCE_DIR/configure" --disable-gtk
+
+echo "ci: building Pixman"
+make -j8
+
+echo "ci: running the complete upstream test suite"
+make check
+
+echo "ci: checking the generated package metadata"
+grep -Fx 'Version: 0.32.8' pixman-1.pc
+
+echo "ci: all historical Abuild Pixman checks passed"
